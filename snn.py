@@ -222,35 +222,32 @@ class Genome:
         offspring_genome = Genome(neurons=offspring_neurons, synapses=offspring_synapses)
         return offspring_genome
 
-    def validate_and_repair_genome(neurons, synapses):
+    def validate_and_repair_genome(self):
         """
         Validates the genome and repairs any inconsistencies, such as synapses referencing nonexistent neurons.
-
-        :param neurons: List of neuron dictionaries
-        :param synapses: List of synapse dictionaries
-        :return: Tuple of (valid_neurons, valid_synapses)
         """
-        valid_neuron_ids = set(neuron['id'] for neuron in neurons)
+        valid_neuron_ids = set(neuron['id'] for neuron in self.neurons)
         valid_synapses = []
-        for syn in synapses:
+        for syn in self.synapses:
             if syn['pre_neuron_id'] in valid_neuron_ids and syn['post_neuron_id'] in valid_neuron_ids:
                 valid_synapses.append(syn)
             else:
                 logger.warning(f"Synapse {syn['id']} references invalid neurons and will be removed.")
-        return neurons, valid_synapses
+        self.synapses = valid_synapses
 
-    def to_dict(genome):
+    def to_dict(self):
         """Converts the genome to a dictionary representation."""
         return {
-            'neurons': copy.deepcopy(genome.neurons),
-            'synapses': copy.deepcopy(genome.synapses)
+            'neurons': copy.deepcopy(self.neurons),
+            'synapses': copy.deepcopy(self.synapses)
         }
 
-    def from_dict(genome_dict):
+    @classmethod
+    def from_dict(cls, genome_dict):
         """Creates a Genome object from a dictionary representation."""
         neurons = copy.deepcopy(genome_dict.get('neurons', []))
         synapses = copy.deepcopy(genome_dict.get('synapses', []))
-        return Genome(neurons=neurons, synapses=synapses)
+        return cls(neurons=neurons, synapses=synapses)
 
 class Network:
     def __init__(self):
@@ -300,20 +297,20 @@ class Network:
         """
         Extracts the network's genome representation.
         """
-        return to_dict(self.genome)
+        return self.genome.to_dict()
 
     @classmethod
-    def from_genome(cls, genome):
+    def from_genome(cls, genome_dict):
         """
         Recreates a network from a genome representation.
         Includes robust error handling to manage invalid genome data.
 
-        :param genome: Dictionary containing 'neurons' and 'synapses' lists
+        :param genome_dict: Dictionary containing 'neurons' and 'synapses' lists
         :return: Network object
         """
         network = cls()
-        genome_obj = from_dict(genome)
-        genome_obj.neurons, genome_obj.synapses = validate_and_repair_genome(genome_obj.neurons, genome_obj.synapses)
+        genome_obj = Genome.from_dict(genome_dict)
+        genome_obj.validate_and_repair_genome()
 
         # Create neurons
         for neuron_params in genome_obj.neurons:
@@ -351,6 +348,11 @@ class Network:
                     synapse.pre_neuron = network.neurons[pre_id]
                 else:
                     logger.error(f"Pre neuron {pre_id} not found for synapse {synapse.id}")
+                # Link synapse to postsynaptic neuron
+                if post_id in network.neurons:
+                    network.neurons[post_id].add_input_synapse(synapse)
+                else:
+                    logger.error(f"Post neuron {post_id} not found for synapse {synapse.id}")
             except (ValueError, TypeError, KeyError) as e:
                 logger.error(f"Error processing synapse {synapse_params.get('id', 'Unknown')}: {e}")
                 continue

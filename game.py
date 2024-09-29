@@ -7,7 +7,7 @@ import math
 import uuid
 import logging
 
-from snn import Neuron, Synapse, Network, generate_unique_id, from_dict, to_dict
+from snn import Neuron, Synapse, Network, generate_unique_id, Genome
 from genetic import GeneticAlgorithm
 
 # Configure logging

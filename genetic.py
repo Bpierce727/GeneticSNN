@@ -5,7 +5,7 @@ import random
 import copy
 import logging
 
-from snn import Genome, Network, generate_unique_id, from_dict, to_dict
+from snn import Neuron, Synapse, Network, generate_unique_id, Genome
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
